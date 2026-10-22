@@ -1,11 +1,10 @@
-
 import streamlit as st
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 import joblib
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 
 # ------------------------------------------------------------------------------
 # CONFIGURACIÓN DE PÁGINA
@@ -22,7 +21,6 @@ st.set_page_config(
 st.title("🤖 Plataforma Analítica de Fidelización de Clientes")
 st.caption("Especialización en Inteligencia Artificial — CUN | Asignatura: Aprendizaje Automático")
 
-# Banner informativo del equipo
 with st.expander("📌 **Ver Información del Proyecto y Equipo (Grupo 9)**", expanded=True):
     col_info1, col_info2 = st.columns(2)
     with col_info1:
@@ -209,52 +207,79 @@ with tab_graf:
         ax2.legend()
         st.pyplot(fig2)
 
-# --- PESTAÑA 3: MÉTRICAS DE EVALUACIÓN ---
+# --- PESTAÑA 3: MÉTRICAS DE EVALUACIÓN Y GRÁFICO COMPARATIVO ---
 with tab_metrics:
-    st.subheader("📐 Rendimiento y Comparativa de Modelos")
-    st.write("Evaluación cuantitativa del rendimiento de los algoritmos sobre el conjunto de validación.")
+    st.subheader("📐 Comparativa Gráfica de Rendimiento de Modelos")
+    st.write("Evaluación cuantitativa visual sobre el conjunto de prueba para comparar la precisión de cada algoritmo.")
     
     X_val = df_rfm[['Recency', 'Frequency', 'Monetary']]
     y_val = df_rfm['Target']
     
-    # Evaluación dinámica con los modelos cargados
-    metrics_data = []
+    raw_metrics = []
     
+    # Evaluar Gradient Boosting
     if loaded_models['gb'] is not None:
         y_pred_gb = loaded_models['gb'].predict(X_val)
-        metrics_data.append({
-            "Algoritmo": "Gradient Boosting",
-            "Accuracy": f"{accuracy_score(y_val, y_pred_gb)*100:.1f}%",
-            "Precision": f"{precision_score(y_val, y_pred_gb)*100:.1f}%",
-            "Recall": f"{recall_score(y_val, y_pred_gb)*100:.1f}%",
-            "F1-Score": f"{f1_score(y_val, y_pred_gb)*100:.1f}%"
-        })
-        
+        raw_metrics.extend([
+            {"Algoritmo": "Gradient Boosting", "Métrica": "Accuracy", "Valor": accuracy_score(y_val, y_pred_gb)},
+            {"Algoritmo": "Gradient Boosting", "Métrica": "Precision", "Valor": precision_score(y_val, y_pred_gb)},
+            {"Algoritmo": "Gradient Boosting", "Métrica": "Recall", "Valor": recall_score(y_val, y_pred_gb)},
+            {"Algoritmo": "Gradient Boosting", "Métrica": "F1-Score", "Valor": f1_score(y_val, y_pred_gb)}
+        ])
+
+    # Evaluar Random Forest
     if loaded_models['rf'] is not None:
         y_pred_rf = loaded_models['rf'].predict(X_val)
-        metrics_data.append({
-            "Algoritmo": "Random Forest",
-            "Accuracy": f"{accuracy_score(y_val, y_pred_rf)*100:.1f}%",
-            "Precision": f"{precision_score(y_val, y_pred_rf)*100:.1f}%",
-            "Recall": f"{recall_score(y_val, y_pred_rf)*100:.1f}%",
-            "F1-Score": f"{f1_score(y_val, y_pred_rf)*100:.1f}%"
-        })
+        raw_metrics.extend([
+            {"Algoritmo": "Random Forest", "Métrica": "Accuracy", "Valor": accuracy_score(y_val, y_pred_rf)},
+            {"Algoritmo": "Random Forest", "Métrica": "Precision", "Valor": precision_score(y_val, y_pred_rf)},
+            {"Algoritmo": "Random Forest", "Métrica": "Recall", "Valor": recall_score(y_val, y_pred_rf)},
+            {"Algoritmo": "Random Forest", "Métrica": "F1-Score", "Valor": f1_score(y_val, y_pred_rf)}
+        ])
 
+    # Evaluar Regresión Logística
     if loaded_models['lr'] is not None and loaded_models['scaler'] is not None:
         X_val_scaled = loaded_models['scaler'].transform(X_val)
         y_pred_lr = loaded_models['lr'].predict(X_val_scaled)
-        metrics_data.append({
-            "Algoritmo": "Regresión Logística",
-            "Accuracy": f"{accuracy_score(y_val, y_pred_lr)*100:.1f}%",
-            "Precision": f"{precision_score(y_val, y_pred_lr)*100:.1f}%",
-            "Recall": f"{recall_score(y_val, y_pred_lr)*100:.1f}%",
-            "F1-Score": f"{f1_score(y_val, y_pred_lr)*100:.1f}%"
-        })
+        raw_metrics.extend([
+            {"Algoritmo": "Regresión Logística", "Métrica": "Accuracy", "Valor": accuracy_score(y_val, y_pred_lr)},
+            {"Algoritmo": "Regresión Logística", "Métrica": "Precision", "Valor": precision_score(y_val, y_pred_lr)},
+            {"Algoritmo": "Regresión Logística", "Métrica": "Recall", "Valor": recall_score(y_val, y_pred_lr)},
+            {"Algoritmo": "Regresión Logística", "Métrica": "F1-Score", "Valor": f1_score(y_val, y_pred_lr)}
+        ])
 
-    if metrics_data:
-        st.dataframe(pd.DataFrame(metrics_data), use_container_width=True)
+    if raw_metrics:
+        df_metrics = pd.DataFrame(raw_metrics)
+        
+        # 1. Grafico comparativo de barras
+        fig_m, ax_m = plt.subplots(figsize=(9, 4.5))
+        sns.barplot(
+            data=df_metrics, x='Métrica', y='Valor', hue='Algoritmo', 
+            palette='Set2', ax=ax_m
+        )
+        ax_m.set_ylim(0, 1.15)
+        ax_m.set_ylabel("Desempeño (0.0 - 1.0)")
+        ax_m.set_title("Comparativa de Desempeño Multimodelo", fontweight='bold')
+        
+        # Añadir etiquetas con valores encima de cada barra
+        for p in ax_m.patches:
+            height = p.get_height()
+            if height > 0:
+                ax_m.annotate(f'{height:.2f}',
+                            (p.get_x() + p.get_width() / 2., height),
+                            ha='center', va='bottom', fontsize=8, xytext=(0, 3),
+                            textcoords='offset points')
+                            
+        st.pyplot(fig_m)
+        st.divider()
+        
+        # 2. Tabla complementaria
+        st.subheader("📋 Tabla Resumen de Métricas")
+        df_pivot = df_metrics.pivot(index='Algoritmo', columns='Métrica', values='Valor')
+        df_pivot = df_pivot.map(lambda x: f"{x*100:.1f}%")
+        st.dataframe(df_pivot, use_container_width=True)
     else:
-        st.warning("No se pudieron calcular las métricas debido a la indisponibilidad de los modelos.")
+        st.warning("No se pudieron cargar los modelos para generar el gráfico de métricas.")
 
 # --- PESTAÑA 4: DOCUMENTACIÓN TÉCNICA ---
 with tab_doc:

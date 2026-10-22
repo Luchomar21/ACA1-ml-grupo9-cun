@@ -10,6 +10,9 @@ import pandas as pd
 import numpy as np
 import joblib
 import os
+import matplotlib.pyplot as plt
+import seaborn as sns
+import streamlit as st
 
 # Configuración inicial de la página
 st.set_page_config(
@@ -17,7 +20,26 @@ st.set_page_config(
     page_icon="🛒",
     layout="wide"
 )
+===========================================================================
+# Ejemplo de código para mostrar gráficos en Streamlit:
+==========================================================================
+st.subheader("📊 Análisis Gráfico del Comportamiento de Clientes")
 
+# Crear figura de Matplotlib
+fig, ax = plt.subplots(1, 2, figsize=(12, 4))
+
+# Gráfico 1: Distribución de Frecuencia vs Monto
+sns.scatterplot(
+    data=rfm, x="Frequency", y="Monetary", hue="Target_Recurrente", ax=ax[0]
+)
+ax[0].set_title("Relación Frecuencia vs Monto")
+
+# Gráfico 2: Distribución de Recencia
+sns.histplot(rfm["Recency"], kde=True, ax=ax[1], color="skyblue")
+ax[1].set_title("Distribución de Recencia (Días)")
+
+# Renderizar en la app de Streamlit
+st.pyplot(fig)
 # ------------------------------------------------------------------------------
 # 1. ENCABEZADO OFICIAL
 # ------------------------------------------------------------------------------

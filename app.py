@@ -4,6 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 import joblib
+import re
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 
 # ------------------------------------------------------------------------------
@@ -16,12 +17,20 @@ st.set_page_config(
 )
 
 # ------------------------------------------------------------------------------
-# PORTADA INICIAL / ENCABEZADO
+# ENCABEZADO CON LOGO DE LA CUN
 # ------------------------------------------------------------------------------
-st.title("🤖 Plataforma Analítica de Fidelización de Clientes")
-st.caption("Especialización en Inteligencia Artificial — CUN | Asignatura: Aprendizaje Automático")
+col_logo, col_head = st.columns([1, 4])
 
-with st.expander("📌 **Ver Información del Proyecto y Equipo (Grupo 9)**", expanded=True):
+with col_logo:
+    # Carga del logo oficial de la CUN desde URL directa de alta resolución
+    st.image("https://cun.edu.co/wp-content/uploads/2021/08/logo-cun.png", width=160)
+
+with col_head:
+    st.title("🤖 Plataforma Analítica de Fidelización de Clientes")
+    st.caption("Especialización en Inteligencia Artificial — CUN | Asignatura: Aprendizaje Automático")
+
+# Banner informativo del equipo
+with st.expander("📌 **Ver Información del Proyecto y Equipo (Grupo 9)**", expanded=False):
     col_info1, col_info2 = st.columns(2)
     with col_info1:
         st.markdown("""
@@ -70,7 +79,7 @@ def load_models():
 loaded_models = load_models()
 
 # ------------------------------------------------------------------------------
-# BARRA LATERAL
+# BARRA LATERAL (ENTRADA TRADICIONAL + CAPA MULTIMODAL INTELLIGENT)
 # ------------------------------------------------------------------------------
 st.sidebar.header("⚙️ Configuración del Modelo")
 model_choice = st.sidebar.selectbox(
@@ -78,10 +87,31 @@ model_choice = st.sidebar.selectbox(
     ("Gradient Boosting (Principal)", "Random Forest (Secundario)", "Regresión Logística (Respaldo)")
 )
 
-st.sidebar.header("📥 Datos del Cliente (RFM)")
-recency = st.sidebar.number_input("Recencia (Días sin comprar):", min_value=1, max_value=365, value=25)
-frequency = st.sidebar.number_input("Frecuencia (Total de compras):", min_value=1, max_value=100, value=8)
-monetary = st.sidebar.number_input("Monto Total Gastado ($):", min_value=1.0, max_value=50000.0, value=650.0)
+st.sidebar.divider()
+st.sidebar.header("📥 Entrada de Datos")
+
+# Módulo Multimodal: Captura inteligente por texto/voz
+with st.sidebar.expander("🎙️ / 📝 **Entrada Inteligente por Texto/Voz**"):
+    st.caption("Escriba o pegue la frase (Ejemplo: *Recencia 15 días, 8 compras, monto 450*)")
+    smart_text = st.text_input("Comando de voz/texto:", "")
+    
+    extracted_r, extracted_f, extracted_m = None, None, None
+    if smart_text:
+        numbers = re.findall(r'\d+(?:\.\d+)?', smart_text)
+        if len(numbers) >= 3:
+            extracted_r = int(float(numbers[0]))
+            extracted_f = int(float(numbers[1]))
+            extracted_m = float(numbers[2])
+            st.success(f"✔ Extraído: R={extracted_r}, F={extracted_f}, M=${extracted_m}")
+
+# Asignar valores predeterminados o extraídos
+default_r = extracted_r if extracted_r is not None else 25
+default_f = extracted_f if extracted_f is not None else 8
+default_m = extracted_m if extracted_m is not None else 650.0
+
+recency = st.sidebar.number_input("Recencia (Días sin comprar):", min_value=1, max_value=365, value=default_r)
+frequency = st.sidebar.number_input("Frecuencia (Total de compras):", min_value=1, max_value=100, value=default_f)
+monetary = st.sidebar.number_input("Monto Total Gastado ($):", min_value=1.0, max_value=50000.0, value=default_m)
 
 btn_predict = st.sidebar.button("🚀 Evaluar Fidelidad")
 
@@ -251,7 +281,7 @@ with tab_metrics:
     if raw_metrics:
         df_metrics = pd.DataFrame(raw_metrics)
         
-        # 1. Grafico comparativo de barras
+        # Grafico comparativo de barras
         fig_m, ax_m = plt.subplots(figsize=(9, 4.5))
         sns.barplot(
             data=df_metrics, x='Métrica', y='Valor', hue='Algoritmo', 
@@ -261,7 +291,6 @@ with tab_metrics:
         ax_m.set_ylabel("Desempeño (0.0 - 1.0)")
         ax_m.set_title("Comparativa de Desempeño Multimodelo", fontweight='bold')
         
-        # Añadir etiquetas con valores encima de cada barra
         for p in ax_m.patches:
             height = p.get_height()
             if height > 0:
@@ -273,7 +302,6 @@ with tab_metrics:
         st.pyplot(fig_m)
         st.divider()
         
-        # 2. Tabla complementaria
         st.subheader("📋 Tabla Resumen de Métricas")
         df_pivot = df_metrics.pivot(index='Algoritmo', columns='Métrica', values='Valor')
         df_pivot = df_pivot.map(lambda x: f"{x*100:.1f}%")
@@ -286,6 +314,7 @@ with tab_doc:
     st.subheader("Arquitectura del Sistema y Tolerancia a Fallos")
     st.markdown("""
     - **Metodología RFM:** Evalúa **Recency** (Recencia), **Frequency** (Frecuencia) y **Monetary** (Monto) para categorizar la lealtad comercial.
+    - **Capa Multimodal Inteligente:** Módulo en la barra lateral que interpreta datos mediante lenguaje natural / transcripción de voz para extraer automáticamente los parámetros RFM.
     - **Tolerancia a Fallos:** En caso de caída de algún archivo `.pkl`, la aplicación conmuta dinámicamente entre el algoritmo principal (*Gradient Boosting*), el secundario (*Random Forest*) y el modelo de respaldo (*Regresión Logística*).
     - **Despliegue:** Sistema alojado de forma continua en Streamlit Cloud y sincronizado con GitHub (`luchomar21/aca1-ml-grupo9-cun`).
     """)

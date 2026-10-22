@@ -1,3 +1,4 @@
+
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -44,7 +45,7 @@ with st.expander("📌 **Ver Información del Proyecto y Equipo (Grupo 9)**", ex
 st.divider()
 
 # ------------------------------------------------------------------------------
-# CARGA DE MODELOS CON TOLERANCIA A FALLOS (RESILIENCIA EN CASCADA)
+# CARGA DE MODELOS CON TOLERANCIA A FALLOS
 # ------------------------------------------------------------------------------
 @st.cache_resource
 def load_models():
@@ -71,7 +72,7 @@ def load_models():
 loaded_models = load_models()
 
 # ------------------------------------------------------------------------------
-# BARRA LATERAL (CONTROLES DE ENTRADA)
+# BARRA LATERAL
 # ------------------------------------------------------------------------------
 st.sidebar.header("⚙️ Configuración del Modelo")
 model_choice = st.sidebar.selectbox(
@@ -86,33 +87,33 @@ monetary = st.sidebar.number_input("Monto Total Gastado ($):", min_value=1.0, ma
 
 btn_predict = st.sidebar.button("🚀 Evaluar Fidelidad")
 
-# Generación de base sintética para los gráficos
+# Base sintética para visualización y métricas
 @st.cache_data
 def get_sample_rfm():
     np.random.seed(42)
-    rec = np.random.randint(1, 100, 200)
-    freq = np.random.randint(1, 15, 200)
-    mon = np.random.uniform(20, 2000, 200)
+    rec = np.random.randint(1, 100, 300)
+    freq = np.random.randint(1, 15, 300)
+    mon = np.random.uniform(20, 2000, 300)
     target = (freq > 5).astype(int)
     return pd.DataFrame({'Recency': rec, 'Frequency': freq, 'Monetary': mon, 'Target': target})
 
 df_rfm = get_sample_rfm()
 
 # ------------------------------------------------------------------------------
-# ESTRUCTURA PRINCIPAL POR PESTAÑAS (TABS)
+# ESTRUCTURA POR PESTAÑAS
 # ------------------------------------------------------------------------------
-tab_pred, tab_graf, tab_doc = st.tabs([
+tab_pred, tab_graf, tab_metrics, tab_doc = st.tabs([
     "🔮 **Predicción & Estrategia**", 
-    "📊 **Visualización de Gráficos**", 
+    "📊 **Visualización de Gráficos**",
+    "📐 **Métricas de Evaluación**", 
     "📄 **Documentación Técnica**"
 ])
 
-# --- PESTAÑA 1: PREDICCIÓN ESTRATÉGICA Y SCORE ---
+# --- PESTAÑA 1: PREDICCIÓN & ESTRATEGIA ---
 with tab_pred:
     st.subheader("Evaluación del Cliente & Recomendador de Marketing")
     st.write("Ingrese los parámetros en la barra lateral izquierda y presione **'🚀 Evaluar Fidelidad'**.")
     
-    # Tarjetas informativas de los datos ingresados
     col_m1, col_m2, col_m3 = st.columns(3)
     col_m1.metric("Recencia", f"{recency} días")
     col_m2.metric("Frecuencia", f"{frequency} compras")
@@ -126,7 +127,6 @@ with tab_pred:
         pred = None
         prob = None
         
-        # Selección e inferencia con cálculo de probabilidad
         if "Gradient Boosting" in model_choice and loaded_models['gb'] is not None:
             selected_model = loaded_models['gb']
             model_name = "Gradient Boosting"
@@ -151,7 +151,6 @@ with tab_pred:
 
         if pred is not None:
             res_col1, res_col2 = st.columns([2, 1])
-            
             with res_col1:
                 if pred == 1:
                     st.success(f"🎉 **RESULTADO:** Cliente clasificado como **RECURRENTE / FIDELIZADO**")
@@ -164,12 +163,9 @@ with tab_pred:
                     st.metric(label="Score de Confianza (Probabilidad)", value=f"{prob:.1f}%")
 
             st.caption(f"Evaluación realizada mediante el algoritmo: **{model_name}**")
-            
             st.divider()
             
-            # --- SECCIÓN DE RECOMENDACIÓN DE MARKETING AUTOMÁTICA ---
             st.subheader("💡 Plan de Acción Comercial Recomendado")
-            
             if pred == 1:
                 st.info("""
                 **Estrategia de Fidelización VIP / Retención:**
@@ -188,7 +184,6 @@ with tab_pred:
 # --- PESTAÑA 2: GRÁFICOS ESTADÍSTICOS ---
 with tab_graf:
     st.subheader("Análisis Exploratorio y Posicionamiento del Cliente")
-    
     col_g1, col_g2 = st.columns(2)
     
     with col_g1:
@@ -197,7 +192,6 @@ with tab_graf:
             data=df_rfm, x='Frequency', y='Monetary', hue='Target', 
             palette={0: "#E67E22", 1: "#2ECC71"}, ax=ax1, alpha=0.8
         )
-        # Resaltar la posición del cliente ingresado
         ax1.scatter(frequency, monetary, color='red', s=180, marker='X', label='Cliente Evaluado')
         ax1.set_title("Frecuencia vs Monto Total Gastado", fontweight='bold')
         ax1.set_xlabel("Frecuencia (N° de compras)")
@@ -214,7 +208,7 @@ with tab_graf:
         ax2.set_ylabel("Densidad / Conteo")
         ax2.legend()
         st.pyplot(fig2)
-        
+
 # --- PESTAÑA 3: MÉTRICAS DE EVALUACIÓN ---
 with tab_metrics:
     st.subheader("📐 Rendimiento y Comparativa de Modelos")
@@ -263,15 +257,6 @@ with tab_metrics:
         st.warning("No se pudieron calcular las métricas debido a la indisponibilidad de los modelos.")
 
 # --- PESTAÑA 4: DOCUMENTACIÓN TÉCNICA ---
-with tab_doc:
-    st.subheader("Arquitectura del Sistema y Tolerancia a Fallos")
-    st.markdown("""
-    - **Metodología RFM:** Evalúa **Recency** (Recencia), **Frequency** (Frecuencia) y **Monetary** (Monto) para categorizar la lealtad comercial.
-    - **Tolerancia a Fallos:** En caso de caída de algún archivo `.pkl`, la aplicación conmuta dinámicamente entre el algoritmo principal (*Gradient Boosting*), el secundario (*Random Forest*) y el modelo de respaldo (*Regresión Logística*).
-    - **Despliegue:** Sistema alojado de forma continua en Streamlit Cloud y sincronizado con GitHub (`luchomar21/aca1-ml-grupo9-cun`).
-    """)
-
-# --- PESTAÑA 3: DOCUMENTACIÓN TÉCNICA ---
 with tab_doc:
     st.subheader("Arquitectura del Sistema y Tolerancia a Fallos")
     st.markdown("""

@@ -4,6 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 import joblib
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix
 
 # ------------------------------------------------------------------------------
 # CONFIGURACIÓN DE PÁGINA
@@ -213,6 +214,62 @@ with tab_graf:
         ax2.set_ylabel("Densidad / Conteo")
         ax2.legend()
         st.pyplot(fig2)
+        
+# --- PESTAÑA 3: MÉTRICAS DE EVALUACIÓN ---
+with tab_metrics:
+    st.subheader("📐 Rendimiento y Comparativa de Modelos")
+    st.write("Evaluación cuantitativa del rendimiento de los algoritmos sobre el conjunto de validación.")
+    
+    X_val = df_rfm[['Recency', 'Frequency', 'Monetary']]
+    y_val = df_rfm['Target']
+    
+    # Evaluación dinámica con los modelos cargados
+    metrics_data = []
+    
+    if loaded_models['gb'] is not None:
+        y_pred_gb = loaded_models['gb'].predict(X_val)
+        metrics_data.append({
+            "Algoritmo": "Gradient Boosting",
+            "Accuracy": f"{accuracy_score(y_val, y_pred_gb)*100:.1f}%",
+            "Precision": f"{precision_score(y_val, y_pred_gb)*100:.1f}%",
+            "Recall": f"{recall_score(y_val, y_pred_gb)*100:.1f}%",
+            "F1-Score": f"{f1_score(y_val, y_pred_gb)*100:.1f}%"
+        })
+        
+    if loaded_models['rf'] is not None:
+        y_pred_rf = loaded_models['rf'].predict(X_val)
+        metrics_data.append({
+            "Algoritmo": "Random Forest",
+            "Accuracy": f"{accuracy_score(y_val, y_pred_rf)*100:.1f}%",
+            "Precision": f"{precision_score(y_val, y_pred_rf)*100:.1f}%",
+            "Recall": f"{recall_score(y_val, y_pred_rf)*100:.1f}%",
+            "F1-Score": f"{f1_score(y_val, y_pred_rf)*100:.1f}%"
+        })
+
+    if loaded_models['lr'] is not None and loaded_models['scaler'] is not None:
+        X_val_scaled = loaded_models['scaler'].transform(X_val)
+        y_pred_lr = loaded_models['lr'].predict(X_val_scaled)
+        metrics_data.append({
+            "Algoritmo": "Regresión Logística",
+            "Accuracy": f"{accuracy_score(y_val, y_pred_lr)*100:.1f}%",
+            "Precision": f"{precision_score(y_val, y_pred_lr)*100:.1f}%",
+            "Recall": f"{recall_score(y_val, y_pred_lr)*100:.1f}%",
+            "F1-Score": f"{f1_score(y_val, y_pred_lr)*100:.1f}%"
+        })
+
+    if metrics_data:
+        st.dataframe(pd.DataFrame(metrics_data), use_container_width=True)
+    else:
+        st.warning("No se pudieron calcular las métricas debido a la indisponibilidad de los modelos.")
+
+# --- PESTAÑA 4: DOCUMENTACIÓN TÉCNICA ---
+with tab_doc:
+    st.subheader("Arquitectura del Sistema y Tolerancia a Fallos")
+    st.markdown("""
+    - **Metodología RFM:** Evalúa **Recency** (Recencia), **Frequency** (Frecuencia) y **Monetary** (Monto) para categorizar la lealtad comercial.
+    - **Tolerancia a Fallos:** En caso de caída de algún archivo `.pkl`, la aplicación conmuta dinámicamente entre el algoritmo principal (*Gradient Boosting*), el secundario (*Random Forest*) y el modelo de respaldo (*Regresión Logística*).
+    - **Despliegue:** Sistema alojado de forma continua en Streamlit Cloud y sincronizado con GitHub (`luchomar21/aca1-ml-grupo9-cun`).
+    """)
 
 # --- PESTAÑA 3: DOCUMENTACIÓN TÉCNICA ---
 with tab_doc:

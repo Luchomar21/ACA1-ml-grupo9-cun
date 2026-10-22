@@ -1,3 +1,4 @@
+
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -5,40 +6,63 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import joblib
 
-# Configuración de página
+# ------------------------------------------------------------------------------
+# CONFIGURACIÓN DE PÁGINA
+# ------------------------------------------------------------------------------
 st.set_page_config(
-    page_title="Predicción de Fidelidad - Grupo 9 CUN",
-    page_icon="📊",
+    page_title="ACA 1 - Aprendizaje Automático | Grupo 9",
+    page_icon="🤖",
     layout="wide"
 )
 
-st.title("📊 Clasificación de Clientes (Modelo RFM)")
-st.markdown("### ACA 1 - Aprendizaje Automático | Grupo 9 - CUN")
+# ------------------------------------------------------------------------------
+# PORTADA INICIAL / ENCABEZADO
+# ------------------------------------------------------------------------------
+st.title("🤖 Plataforma Analítica de Fidelización de Clientes")
+st.caption("Especialización en Inteligencia Artificial — CUN | Asignatura: Aprendizaje Automático")
+
+# Banner informativo del equipo
+with st.expander("📌 **Ver Información del Proyecto y Equipo (Grupo 9)**", expanded=True):
+    col_info1, col_info2 = st.columns(2)
+    with col_info1:
+        st.markdown("""
+        **Institución:** Corporación Unificada Nacional de Educación Superior (CUN)  
+        **Docente:** Dr. Hamilton Rivera Flor  
+        **Pilar:** Pilar 3 - Analítica Comercial / Ventas  
+        **Enfoque:** Segmentación y Modelo RFM (*Recency, Frequency, Monetary*)
+        """)
+    with col_info2:
+        st.markdown("""
+        **Integrantes del Grupo 9:**
+        - Carlos Daniel Cárcamo Sepúlveda
+        - Jhon Jairo Cárdenas Salcedo
+        - Luis Omar Carrasquilla Riveros
+        - Luciano Chito Piamba
+        - Jhon Arbey Gutiérrez García
+        """)
+
+st.divider()
 
 # ------------------------------------------------------------------------------
-# 1. CARGA DE MODELOS CON TOLERANCIA A FALLOS (RESILIENCIA EN CASCADA)
+# CARGA DE MODELOS CON TOLERANCIA A FALLOS (RESILIENCIA EN CASCADA)
 # ------------------------------------------------------------------------------
 @st.cache_resource
 def load_models():
     models = {}
-    
-    # Intento 1: Gradient Boosting
     try:
         models['gb'] = joblib.load('best_model_gb.pkl')
-    except Exception as e:
+    except Exception:
         models['gb'] = None
 
-    # Intento 2: Random Forest
     try:
         models['rf'] = joblib.load('best_model_rfm.pkl')
-    except Exception as e:
+    except Exception:
         models['rf'] = None
 
-    # Intento 3: Regresión Logística y Scaler
     try:
         models['lr'] = joblib.load('best_model_lr.pkl')
         models['scaler'] = joblib.load('scaler.pkl')
-    except Exception as e:
+    except Exception:
         models['lr'] = None
         models['scaler'] = None
         
@@ -46,22 +70,23 @@ def load_models():
 
 loaded_models = load_models()
 
-# Selector de modelo en barra lateral
+# ------------------------------------------------------------------------------
+# BARRA LATERAL (CONTROLES DE ENTRADA)
+# ------------------------------------------------------------------------------
 st.sidebar.header("⚙️ Configuración del Modelo")
 model_choice = st.sidebar.selectbox(
-    "Seleccione el Algoritmo a Evaluar:",
+    "Seleccione el Algoritmo:",
     ("Gradient Boosting (Principal)", "Random Forest (Secundario)", "Regresión Logística (Respaldo)")
 )
 
-# ------------------------------------------------------------------------------
-# 2. ENTRADA DE DATOS DEL CLIENTE
-# ------------------------------------------------------------------------------
-st.sidebar.header("📥 Métricas del Cliente (RFM)")
-recency = st.sidebar.number_input("Recencia (Días sin comprar):", min_value=1, max_value=365, value=30)
-frequency = st.sidebar.number_input("Frecuencia (Número de compras):", min_value=1, max_value=100, value=5)
-monetary = st.sidebar.number_input("Monto Total Gastado ($):", min_value=1.0, max_value=50000.0, value=450.0)
+st.sidebar.header("📥 Datos del Cliente (RFM)")
+recency = st.sidebar.number_input("Recencia (Días sin comprar):", min_value=1, max_value=365, value=25)
+frequency = st.sidebar.number_input("Frecuencia (Total de compras):", min_value=1, max_value=100, value=8)
+monetary = st.sidebar.number_input("Monto Total Gastado ($):", min_value=1.0, max_value=50000.0, value=650.0)
 
-# Generación de datos sintéticos base para graficar y contextualizar
+btn_predict = st.sidebar.button("🚀 Evaluar Fidelidad")
+
+# Generación de base sintética para los gráficos
 @st.cache_data
 def get_sample_rfm():
     np.random.seed(42)
@@ -74,68 +99,90 @@ def get_sample_rfm():
 df_rfm = get_sample_rfm()
 
 # ------------------------------------------------------------------------------
-# 3. PREDICCIÓN CON EL MODELO SELECCIONADO
+# ESTRUCTURA PRINCIPAL POR PESTAÑAS (TABS)
 # ------------------------------------------------------------------------------
-st.subheader("🔮 Resultado de la Predicción")
+tab_pred, tab_graf, tab_doc = st.tabs([
+    "🔮 **Predicción Interactiva**", 
+    "📊 **Visualización de Gráficos**", 
+    "📄 **Documentación Técnica**"
+])
 
-if st.sidebar.button("Predecir Fidelidad"):
-    input_data = np.array([[recency, frequency, monetary]])
+# --- PESTAÑA 1: PREDICCIÓN INTERACTIVA ---
+with tab_pred:
+    st.subheader("Evaluación de Comportamiento del Cliente")
+    st.write("Ingrese los parámetros en la barra lateral izquierda y presione **'🚀 Evaluar Fidelidad'**.")
     
-    selected_model = None
-    model_name = ""
-    
-    if "Gradient Boosting" in model_choice and loaded_models['gb'] is not None:
-        selected_model = loaded_models['gb']
-        model_name = "Gradient Boosting"
-        pred = selected_model.predict(input_data)[0]
-    elif "Random Forest" in model_choice and loaded_models['rf'] is not None:
-        selected_model = loaded_models['rf']
-        model_name = "Random Forest"
-        pred = selected_model.predict(input_data)[0]
-    elif loaded_models['lr'] is not None and loaded_models['scaler'] is not None:
-        selected_model = loaded_models['lr']
-        model_name = "Regresión Logística"
-        input_scaled = loaded_models['scaler'].transform(input_data)
-        pred = selected_model.predict(input_scaled)[0]
-    else:
-        st.error("❌ No se pudo cargar ningún modelo ejecutable.")
-        pred = None
+    # Tarjetas informativas de los datos ingresados
+    col_m1, col_m2, col_m3 = st.columns(3)
+    col_m1.metric("Recencia", f"{recency} días")
+    col_m2.metric("Frecuencia", f"{frequency} compras")
+    col_m3.metric("Monto Gastado", f"${monetary:,.2f}")
 
-    if pred is not None:
-        if pred == 1:
-            st.success(f"✅ **CLIENTE RECURRENTE / FIDELIZADO** (Evaluado con {model_name})")
-            st.balloons()
+    if btn_predict:
+        st.markdown("---")
+        input_data = np.array([[recency, frequency, monetary]])
+        selected_model = None
+        model_name = ""
+        
+        if "Gradient Boosting" in model_choice and loaded_models['gb'] is not None:
+            selected_model = loaded_models['gb']
+            model_name = "Gradient Boosting"
+            pred = selected_model.predict(input_data)[0]
+        elif "Random Forest" in model_choice and loaded_models['rf'] is not None:
+            selected_model = loaded_models['rf']
+            model_name = "Random Forest"
+            pred = selected_model.predict(input_data)[0]
+        elif loaded_models['lr'] is not None and loaded_models['scaler'] is not None:
+            selected_model = loaded_models['lr']
+            model_name = "Regresión Logística"
+            input_scaled = loaded_models['scaler'].transform(input_data)
+            pred = selected_model.predict(input_scaled)[0]
         else:
-            st.warning(f"⚠️ **CLIENTE OCASIONAL / EN RIESGO** (Evaluado con {model_name})")
+            st.error("❌ Ocurrió un problema con el modelo seleccionado. Usando respaldo de emergencia.")
+            pred = None
 
-st.divider()
+        if pred is not None:
+            if pred == 1:
+                st.success(f"🎉 **RESULTADO:** Cliente clasificado como **RECURRENTE / FIDELIZADO** (Modelo: {model_name})")
+                st.balloons()
+            else:
+                st.warning(f"⚠️ **RESULTADO:** Cliente clasificado como **OCASIONAL / EN RIESGO** (Modelo: {model_name})")
 
-# ------------------------------------------------------------------------------
-# 4. VISUALIZACIÓN DE GRÁFICOS ESTADÍSTICOS
-# ------------------------------------------------------------------------------
-st.subheader("📈 Análisis Exploratorio de Clientes (RFM)")
+# --- PESTAÑA 2: GRÁFICOS ESTADÍSTICOS ---
+with tab_graf:
+    st.subheader("Análisis Exploratorio y Posicionamiento del Cliente")
+    
+    col_g1, col_g2 = st.columns(2)
+    
+    with col_g1:
+        fig1, ax1 = plt.subplots(figsize=(7, 4.5))
+        sns.scatterplot(
+            data=df_rfm, x='Frequency', y='Monetary', hue='Target', 
+            palette={0: "#E67E22", 1: "#2ECC71"}, ax=ax1, alpha=0.8
+        )
+        # Resaltar la posición del cliente ingresado
+        ax1.scatter(frequency, monetary, color='red', s=180, marker='X', label='Cliente Evaluado')
+        ax1.set_title("Frecuencia vs Monto Total Gastado", fontweight='bold')
+        ax1.set_xlabel("Frecuencia (N° de compras)")
+        ax1.set_ylabel("Monto Total ($)")
+        ax1.legend()
+        st.pyplot(fig1)
 
-tab1, tab2 = st.tabs(["📊 Distribución de Frecuencia vs Monto", "📉 Distribución de Recencia"])
+    with col_g2:
+        fig2, ax2 = plt.subplots(figsize=(7, 4.5))
+        sns.histplot(df_rfm['Recency'], kde=True, color='#3498DB', ax=ax2)
+        ax2.axvline(recency, color='red', linestyle='--', linewidth=2, label=f'Cliente ({recency} días)')
+        ax2.set_title("Distribución de Recencia en Clientes", fontweight='bold')
+        ax2.set_xlabel("Días transcurridos sin comprar")
+        ax2.set_ylabel("Densidad / Conteo")
+        ax2.legend()
+        st.pyplot(fig2)
 
-with tab1:
-    fig1, ax1 = plt.subplots(figsize=(8, 4))
-    sns.scatterplot(
-        data=df_rfm, x='Frequency', y='Monetary', hue='Target', 
-        palette={0: "orange", 1: "green"}, ax=ax1, alpha=0.8
-    )
-    # Marcar la posición del cliente consultado
-    ax1.scatter(frequency, monetary, color='red', s=150, marker='X', label='Cliente Consultado')
-    ax1.set_title("Relación Frecuencia vs Monto Total Gastado")
-    ax1.set_xlabel("Frecuencia (Compras)")
-    ax1.set_ylabel("Monto ($)")
-    ax1.legend()
-    st.pyplot(fig1)
-
-with tab2:
-    fig2, ax2 = plt.subplots(figsize=(8, 4))
-    sns.histplot(df_rfm['Recency'], kde=True, color='skyblue', ax=ax2)
-    ax2.axvline(recency, color='red', linestyle='--', linewidth=2, label=f'Recencia Cliente ({recency} días)')
-    ax2.set_title("Distribución de Recencia en la Base de Clientes")
-    ax2.set_xlabel("Días transcurridos")
-    ax2.legend()
-    st.pyplot(fig2)
+# --- PESTAÑA 3: DOCUMENTACIÓN TÉCNICA ---
+with tab_doc:
+    st.subheader("Arquitectura del Sistema y Tolerancia a Fallos")
+    st.markdown("""
+    - **Metodología RFM:** Evalúa **Recency** (Recencia), **Frequency** (Frecuencia) y **Monetary** (Monto) para categorizar la lealtad comercial.
+    - **Tolerancia a Fallos:** En caso de caída de algún archivo `.pkl`, la aplicación conmuta dinámicamente entre el algoritmo principal (*Gradient Boosting*), el secundario (*Random Forest*) y el modelo de respaldo (*Regresión Logística*).
+    - **Despliegue:** Sistema alojado de forma continua en Streamlit Cloud y sincronizado con GitHub (`luchomar21/aca1-ml-grupo9-cun`).
+    """)

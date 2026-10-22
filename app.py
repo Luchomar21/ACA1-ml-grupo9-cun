@@ -1,4 +1,3 @@
-
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -102,14 +101,14 @@ df_rfm = get_sample_rfm()
 # ESTRUCTURA PRINCIPAL POR PESTAÑAS (TABS)
 # ------------------------------------------------------------------------------
 tab_pred, tab_graf, tab_doc = st.tabs([
-    "🔮 **Predicción Interactiva**", 
+    "🔮 **Predicción & Estrategia**", 
     "📊 **Visualización de Gráficos**", 
     "📄 **Documentación Técnica**"
 ])
 
-# --- PESTAÑA 1: PREDICCIÓN INTERACTIVA ---
+# --- PESTAÑA 1: PREDICCIÓN ESTRATÉGICA Y SCORE ---
 with tab_pred:
-    st.subheader("Evaluación de Comportamiento del Cliente")
+    st.subheader("Evaluación del Cliente & Recomendador de Marketing")
     st.write("Ingrese los parámetros en la barra lateral izquierda y presione **'🚀 Evaluar Fidelidad'**.")
     
     # Tarjetas informativas de los datos ingresados
@@ -123,30 +122,67 @@ with tab_pred:
         input_data = np.array([[recency, frequency, monetary]])
         selected_model = None
         model_name = ""
+        pred = None
+        prob = None
         
+        # Selección e inferencia con cálculo de probabilidad
         if "Gradient Boosting" in model_choice and loaded_models['gb'] is not None:
             selected_model = loaded_models['gb']
             model_name = "Gradient Boosting"
             pred = selected_model.predict(input_data)[0]
+            if hasattr(selected_model, "predict_proba"):
+                prob = selected_model.predict_proba(input_data)[0][1] * 100
         elif "Random Forest" in model_choice and loaded_models['rf'] is not None:
             selected_model = loaded_models['rf']
             model_name = "Random Forest"
             pred = selected_model.predict(input_data)[0]
+            if hasattr(selected_model, "predict_proba"):
+                prob = selected_model.predict_proba(input_data)[0][1] * 100
         elif loaded_models['lr'] is not None and loaded_models['scaler'] is not None:
             selected_model = loaded_models['lr']
             model_name = "Regresión Logística"
             input_scaled = loaded_models['scaler'].transform(input_data)
             pred = selected_model.predict(input_scaled)[0]
+            if hasattr(selected_model, "predict_proba"):
+                prob = selected_model.predict_proba(input_scaled)[0][1] * 100
         else:
             st.error("❌ Ocurrió un problema con el modelo seleccionado. Usando respaldo de emergencia.")
-            pred = None
 
         if pred is not None:
+            res_col1, res_col2 = st.columns([2, 1])
+            
+            with res_col1:
+                if pred == 1:
+                    st.success(f"🎉 **RESULTADO:** Cliente clasificado como **RECURRENTE / FIDELIZADO**")
+                    st.balloons()
+                else:
+                    st.warning(f"⚠️ **RESULTADO:** Cliente clasificado como **OCASIONAL / EN RIESGO**")
+            
+            with res_col2:
+                if prob is not None:
+                    st.metric(label="Score de Confianza (Probabilidad)", value=f"{prob:.1f}%")
+
+            st.caption(f"Evaluación realizada mediante el algoritmo: **{model_name}**")
+            
+            st.divider()
+            
+            # --- SECCIÓN DE RECOMENDACIÓN DE MARKETING AUTOMÁTICA ---
+            st.subheader("💡 Plan de Acción Comercial Recomendado")
+            
             if pred == 1:
-                st.success(f"🎉 **RESULTADO:** Cliente clasificado como **RECURRENTE / FIDELIZADO** (Modelo: {model_name})")
-                st.balloons()
+                st.info("""
+                **Estrategia de Fidelización VIP / Retención:**
+                - 🌟 **Inclusión en Programa Loyalty VIP:** Asignar estado preferencial con acumulación doble de puntos.
+                - 🎁 **Lanzamientos Exclusivos:** Enviar acceso anticipado a nuevas colecciones o productos.
+                - 📈 **Venta Cruzada (Cross-Selling):** Ofrecer complementos de alto valor basados en sus compras previas.
+                """)
             else:
-                st.warning(f"⚠️ **RESULTADO:** Cliente clasificado como **OCASIONAL / EN RIESGO** (Modelo: {model_name})")
+                st.error("""
+                **Estrategia de Reactivación y Rescate:**
+                - 📩 **Campaña de Email Marketing Personalizada:** Enviar un cupón con descuento del 15% para su próxima compra.
+                - ❓ **Encuesta de Satisfacción Abreviada:** Identificar los motivos de la baja frecuencia o recencia prolongada.
+                - 🔔 **Recordatorio de Carrito / Producto:** Notificar ofertas por tiempo limitado en ítems de su interés.
+                """)
 
 # --- PESTAÑA 2: GRÁFICOS ESTADÍSTICOS ---
 with tab_graf:
